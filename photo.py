@@ -1,4 +1,3 @@
-from email.mime import image
 import streamlit as st
 from PIL import Image
 from backend import (
@@ -7,199 +6,152 @@ from backend import (
     make_ken_burns_video,
     adjust_brightness,
     adjust_contrast,
-    adjust_sharpness,
-    preset_portrait,
-    preset_night,
-    preset_vintage
+    adjust_sharpness
 )
 
-import io
-
-
+# -----------------------
+# Page Config
+# -----------------------
 st.set_page_config(
     page_title="Photo Editor & Enhancer",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.markdown(
-    """
-    <h1 style="text-align:center;">📸 Photo Editor & Enhancer</h1>
-    <p style="text-align:center; color: gray;">
-    Zoom • Enhance • Presets • Photo → Video
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+# -----------------------
+# Hero Section
+# -----------------------
+st.markdown("""
+<style>
+.hero {
+    text-align: center;
+    padding: 2.5rem 1rem;
+}
+.hero h1 {
+    font-size: 3rem;
+    font-weight: 800;
+}
+.hero p {
+    font-size: 1.2rem;
+    color: #9aa0a6;
+}
+</style>
 
+<div class="hero">
+    <h1>📸 Photo Editor & Enhancer</h1>
+    <p>Zoom • Enhance • Presets • Adjustments • Photo → Video</p>
+</div>
+""", unsafe_allow_html=True)
+
+# -----------------------
+# Upload Image
+# -----------------------
 uploaded = st.file_uploader(
-    "Upload an image",
+    "📤 Upload an image",
     type=["jpg", "jpeg", "png"]
 )
 
-# ✅ EVERYTHING BELOW MUST BE INSIDE THIS
-if uploaded:
-    img = Image.open(uploaded).convert("RGB")
+if not uploaded:
+    st.info("⬆ Upload an image to start editing")
+    st.stop()
 
-    # -----------------------
-    # Original
-    # -----------------------
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Original")
-        st.image(img, use_container_width=True)
+img = Image.open(uploaded).convert("RGB")
+edited = img.copy()
 
-    # -----------------------
-    # Zoom
-    # -----------------------
-    st.subheader("🔍 Zoom")
-    zoom_type = st.radio("Zoom type", ["Zoom In", "Zoom Out"], horizontal=True)
-    zoom_factor = st.slider("Zoom factor", 1.1, 2.0, 1.2, 0.1)
+# -----------------------
+# Sidebar Controls
+# -----------------------
+st.sidebar.header("🛠 Editing Tools")
 
-    if st.button("Apply Zoom"):
-        scale = zoom_factor if zoom_type == "Zoom In" else 1 / zoom_factor
-        zoomed = zoom_image(img, scale)
+# --- Zoom ---
+st.sidebar.subheader("🔍 Zoom")
+zoom_type = st.sidebar.radio("Zoom type", ["None", "Zoom In", "Zoom Out"])
+zoom_factor = st.sidebar.slider("Zoom factor", 1.1, 2.0, 1.2, 0.1)
 
-        with col2:
-            st.subheader("Zoomed")
-            st.image(zoomed, use_container_width=True)
+if zoom_type != "None":
+    scale = zoom_factor if zoom_type == "Zoom In" else 1 / zoom_factor
+    edited = zoom_image(edited, scale)
 
-    st.divider()
+# --- Enhance ---
+st.sidebar.subheader("✨ Enhance")
+if st.sidebar.button("Enhance Quality"):
+    with st.spinner("Enhancing image..."):
+        edited = enhance_image(edited)
 
-    # -----------------------
-    # Enhance
-    # -----------------------
-    st.subheader("✨ Enhance Quality")
+# --- Presets ---
+st.sidebar.subheader("🎨 Presets")
+preset = st.sidebar.selectbox(
+    "Choose preset",
+    ["None", "Portrait", "Vivid", "Vintage", "Black & White"]
+)
 
-    if st.button("Enhance Image"):
-        with st.spinner("Enhancing image..."):
-            @st.cache_data(show_spinner=False)
-            def cached_enhance(image):
-                return enhance_image(image)
+if preset == "Portrait":
+    edited = adjust_brightness(edited, 1.1)
+    edited = adjust_contrast(edited, 1.2)
+    edited = adjust_sharpness(edited, 1.3)
 
-            enhanced = cached_enhance(img)
+elif preset == "Vivid":
+    edited = adjust_brightness(edited, 1.2)
+    edited = adjust_contrast(edited, 1.4)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("Original")
-            st.image(img, use_container_width=True)
-        with col2:
-            st.subheader("Enhanced")
-            st.image(enhanced, use_container_width=True)
+elif preset == "Vintage":
+    edited = adjust_brightness(edited, 0.9)
+    edited = adjust_contrast(edited, 0.9)
 
-    st.divider()
+elif preset == "Black & White":
+    edited = edited.convert("L").convert("RGB")
 
-    # -----------------------
-    # Manual Adjustments
-    # -----------------------
-    st.subheader("🎚 Manual Adjustments")
+# --- Manual Adjustments ---
+st.sidebar.subheader("🎚 Manual Adjustments")
 
-    brightness = st.slider("Brightness", 0.5, 2.0, 1.0, 0.1)
-    contrast   = st.slider("Contrast",   0.5, 2.0, 1.0, 0.1)
-    sharpness  = st.slider("Sharpness",  0.5, 3.0, 1.0, 0.1)
+brightness = st.sidebar.slider("Brightness", 0.5, 2.0, 1.0, 0.1)
+contrast   = st.sidebar.slider("Contrast",   0.5, 2.0, 1.0, 0.1)
+sharpness  = st.sidebar.slider("Sharpness",  0.5, 3.0, 1.0, 0.1)
 
-    edited = adjust_brightness(img, brightness)
-    edited = adjust_contrast(edited, contrast)
-    edited = adjust_sharpness(edited, sharpness)
+edited = adjust_brightness(edited, brightness)
+edited = adjust_contrast(edited, contrast)
+edited = adjust_sharpness(edited, sharpness)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Original")
-        st.image(img, use_container_width=True)
-    with col2:
-        st.subheader("Edited (Live)")
-        st.image(edited, use_container_width=True)
+# -----------------------
+# Before / After Display
+# -----------------------
+st.markdown("## 🖼 Before & After")
 
-    st.divider()
+col1, col2 = st.columns(2)
 
-    # -----------------------
-    # Preset Filters
-    # ----------------------
-    st.subheader("🎨 Preset Filters")
-    preset = st.radio(
-    "Choose a preset",
-    ["None", "Portrait", "Night", "Vintage"],
-    horizontal=True
-    )
+with col1:
+    st.subheader("Original")
+    st.image(img, use_container_width=True)
 
-    preset_img = edited.copy()
+with col2:
+    st.subheader("Edited")
+    st.image(edited, use_container_width=True)
 
-    if preset == "Portrait":
-        preset_img = preset_portrait(preset_img)
-    elif preset == "Night":
-        preset_img = preset_night(preset_img)
-    elif preset == "Vintage":
-        preset_img = preset_vintage(preset_img)
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Before Preset")
-        st.image(edited, use_container_width=True)
-    with col2:
-        st.subheader("After Preset")
-        st.image(preset_img, use_container_width=True)
-    # IMPORTANT: overwrite edited image
-    edited = preset_img
+# -----------------------
+# Download Button
+# -----------------------
+st.download_button(
+    "⬇ Download Edited Image",
+    data=edited.tobytes(),
+    file_name="edited_image.jpg",
+    mime="image/jpeg"
+)
 
-    #------------------------
-    #Before / After Comparison
-    #------------------------
-    st.subheader("🆚 Before / After Comparison")
+st.divider()
 
-    compare_value = st.slider(
-        "Drag to compare",
-        min_value=0,
-        max_value=100,
-        value=50
-    )
+# -----------------------
+# Photo → Video
+# -----------------------
+st.markdown("## 🎞 Photo → Video (Ken Burns Effect)")
 
-    # Resize images to same size
-    orig = img.copy()
-    edit = edited.copy()
+duration = st.slider("Video duration (seconds)", 2, 8, 4)
+fps = st.selectbox("FPS", [15, 24, 25, 30], index=2)
 
-    width, height = orig.size
-    cut = int((compare_value / 100) * width)
-
-    # Create comparison image
-    comparison = Image.new("RGB", (width, height))
-    comparison.paste(orig.crop((0, 0, cut, height)), (0, 0))
-    comparison.paste(edit.crop((cut, 0, width, height)), (cut, 0))
-
-    st.image(comparison, use_container_width=True)
-    st.divider()
-
-    #-----------------------
-    #Download Edited Image
-    #-----------------------
-    
-    st.subheader("⬇️ Download Edited Image")
-
-    buf = io.BytesIO()
-    edited.save(buf, format="JPEG", quality=95)
-    byte_im = buf.getvalue()
-
-    st.download_button(
-        label="Download Image",
-        data=byte_im,
-        file_name="edited_photo.jpg",
-        mime="image/jpeg"
-    )
-    st.divider()
-
-
-
-    # -----------------------
-    # Photo to Video
-    # -----------------------
-    st.subheader("🎞 Photo → Video (Ken Burns)")
-
-    duration = st.slider("Video duration (seconds)", 2, 8, 4)
-    fps = st.selectbox("FPS", [15, 24, 25, 30], index=2)
-
-    if st.button("Create Video"):
-        with st.spinner("Rendering video..."):
-            @st.cache_data(show_spinner=False)
-            def cached_video(image, duration, fps):
-                return make_ken_burns_video(image, duration, fps)
-
-            video_path = cached_video(img, duration, fps)
-
-        st.video(video_path)
+if st.button("🎬 Generate Video"):
+    with st.spinner("Rendering video..."):
+        video_path = make_ken_burns_video(
+            img,
+            duration=duration,
+            fps=fps
+        )
+    st.video(video_path)
