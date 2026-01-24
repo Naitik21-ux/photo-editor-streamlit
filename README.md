@@ -1,5 +1,9 @@
 # 📸 Photo Editor & Enhancer
 
+## 🌍 Live Demo
+👉 https://photo-editor-app-tb2c4cmyqoay5s4dbmyzlp.streamlit.app/
+
+
 A full-featured photo editing web application built using **Python and Streamlit**.  
 The app allows users to upload images, apply real-time edits, use preset filters, compare before/after results, generate videos, and export the final image.
 
