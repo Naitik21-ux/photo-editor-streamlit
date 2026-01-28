@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import os
 import tempfile
+import imageio
 
 def pil_to_cv2(pil_img):
     arr = np.array(pil_img.convert("RGB"))
@@ -37,32 +38,35 @@ def make_ken_burns_video(pil_img, duration=4, fps=25):
     w, h = pil_img.size
     cv_img = pil_to_cv2(pil_img)
 
+    video_frames = []
+
+    for i in range(frames):
+        t = i / max(frames - 1, 1)
+        scale = 1.0 + 0.2 * t
+
+        cw, ch = int(w / scale), int(h / scale)
+        x = (w - cw) // 2
+        y = (h - ch) // 2
+
+        frame = cv_img[y:y+ch, x:x+cw]
+        frame = cv2.resize(frame, (w, h))
+
+        # BGR → RGB
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        video_frames.append(frame)
+
     tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
     path = tmp.name
     tmp.close()
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(path, fourcc, fps, (w, h))
-
-    if not writer.isOpened():
-        raise RuntimeError("VideoWriter failed to open")
-
-    for i in range(frames):
-        scale = 1.0 + 0.2 * (i / frames)
-        cw, ch = int(w / scale), int(h / scale)
-        x, y = (w - cw) // 2, (h - ch) // 2
-
-        frame = cv_img[y:y+ch, x:x+cw]
-        frame = cv2.resize(frame, (w, h))
-        writer.write(frame)
-
-    writer.release()
+    imageio.mimsave(path, video_frames, fps=fps, codec="libx264")
 
     with open(path, "rb") as f:
         video_bytes = f.read()
 
     os.remove(path)
     return video_bytes
+
 
 
     tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)

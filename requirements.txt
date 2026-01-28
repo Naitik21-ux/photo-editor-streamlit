@@ -5,3 +5,6 @@ numpy
 opencv-python-headless
 streamlit
 python-multipart
+imageio
+imageio-ffmpeg
+
