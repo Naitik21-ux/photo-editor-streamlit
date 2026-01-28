@@ -41,6 +41,34 @@ def make_ken_burns_video(pil_img, duration=4, fps=25):
     path = tmp.name
     tmp.close()
 
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(path, fourcc, fps, (w, h))
+
+    if not writer.isOpened():
+        raise RuntimeError("VideoWriter failed to open")
+
+    for i in range(frames):
+        scale = 1.0 + 0.2 * (i / frames)
+        cw, ch = int(w / scale), int(h / scale)
+        x, y = (w - cw) // 2, (h - ch) // 2
+
+        frame = cv_img[y:y+ch, x:x+cw]
+        frame = cv2.resize(frame, (w, h))
+        writer.write(frame)
+
+    writer.release()
+
+    with open(path, "rb") as f:
+        video_bytes = f.read()
+
+    os.remove(path)
+    return video_bytes
+
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    path = tmp.name
+    tmp.close()
+
     writer = cv2.VideoWriter(
         path,
         cv2.VideoWriter_fourcc(*"mp4v"),
