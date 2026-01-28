@@ -150,4 +150,5 @@ fps = st.selectbox("FPS", [15, 24, 25, 30], index=2)
 if st.button("🎬 Generate Video"):
     with st.spinner("Rendering video..."):
         video_bytes = make_ken_burns_video(img, duration, fps)
-st.video(video_bytes)
+    st.video(video_bytes)
+
